@@ -214,6 +214,56 @@ Personagem criarPersonagem(){
 
 
 
+void jogarSemestre(Personagem *p){
+    int turno = 0;
+    int diaAtual = 30;
+    int diaMax = 0;
+    ACAO escolha = -1;
+
+    //durante o semestre
+    for(diaAtual; diaAtual <= diaMax; diaAtual++){
+        printf("\n=== Dia %d\n", diaAtual);
+
+        for (turno = 0; turno < TOTAL_TURNOS; turno++){
+            while (escolha < 0 || escolha > 4){
+            printf("\nTurno %d\n", turno);
+            printf("Escolha uma ação:\n");
+            printf("[0] Ir à aula\n");
+            printf("[1] Estudar\n");
+            printf("[2] Descansar\n");
+            printf("[3] Trabalhar\n");
+            printf("[4] Socializar\n");
+            scanf("%d", (int*)&escolha);
+
+            if (escolha < 0 || escolha > 4) {
+                    printf("Ação inválida! Tente novamente");
+                }
+            }
+
+            switch (escolha) {
+                case ACAO_IR_AULA:
+                    irParaAula(p, turno);
+                    break;
+                case ACAO_ESTUDAR:
+                    estudar(p);
+                    break;
+                case ACAO_DESCANSAR:
+                    descansar(p);
+                    break;
+                case ACAO_TRABALAHR:
+                    trabalhar(p);
+                    break;
+                case ACAO_SOCIALIZAR:
+                    socializar(p);
+                    break;
+            }
+        }
+    }
+    //final do semestre
+}
+
+
+
 
 
 int main() {
@@ -249,7 +299,5 @@ int main() {
 
     return 0;
 }
-
-
 
 
