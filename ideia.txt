@@ -1,0 +1,35 @@
+⚙️ FUNÇÕES FUNDAMENTAIS
+✅ Criação e Inicialização
+Personagem criarPersonagem();
+
+void inicializarMateria(Materia *m, const char* nome, int xpNecessario, int maxFaltas, bool horarios[]);
+
+✅ Loop principal
+void jogarSemestre(Personagem *p);
+
+Loop de dias e turnos
+
+Escolha de ações
+
+✅ Ações do jogador
+void realizarAcao(Personagem *p, Acao a, Turno t);
+
+✅ Gerenciamento de XP e progresso
+void adicionarXP(Materia *m, int quantidade);
+
+bool verificarConclusao(Materia *m);
+
+✅ Estado do jogador
+void alterarEnergia(Personagem *p, int delta);
+
+void alterarEstresse(Personagem *p, int delta);
+
+void alterarMoral(Personagem *p, int delta);
+
+✅ Eventos (opcional)
+void dispararEventoAleatorio(Personagem *p);
+
+✅ Interface
+void mostrarStatus(Personagem *p);
+
+void mostrarMaterias(Personagem *p);
