@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <locale.h>
 
 #define MAX_NOME 50
 #define TOTAL_TURNOS 4
@@ -21,7 +22,6 @@ typedef enum{
     ACAO_DESCANSAR,
     ACAO_SOCIALIZAR,
 } ACAO;
-
 
 typedef struct {
     char nome[MAX_NOME];
@@ -49,7 +49,7 @@ typedef struct {
 } Personagem;
 
 
-//funções
+//funções auxiliares
 bool materiaJaExiste(Personagem *jogador, const char *nomeMateria){
     for(int i = 0; i <jogador ->NUM_MATERIAS; i++){
         if(strcmp(jogador->materias[i].nome, nomeMateria) == 0){
@@ -419,7 +419,7 @@ void socializar(Personagem *p){
 }
 
 //função de status
-void mostarStatus(Personagem *p){
+void mostrarStatus(Personagem *p){
     printf("=== STATUS DO(A) %S ===\n", p->nome);
     printf("%dº Semestre\n", p->semestre);
     printf("Energia: %d\n", p->energia);
@@ -430,14 +430,15 @@ void mostarStatus(Personagem *p){
         Materia *m = &p->materias[i];
         printf("%s -> XP: %d | Frequência: %d%%\n", m->nome, m->xp, (m->frequencia/22)*100);
     }
+    printf("=======================\n");
 
 }
 
 // função principal do dia a dia
 void jogarSemestre(Personagem *p){
     int turno = 0;
-    int diaAtual = 30;
-    int diaMax = 0;
+    int diaAtual = 1;
+    int diaMax = 30;
     ACAO escolha = -1;
     char escolhaStatus;
 
@@ -446,14 +447,17 @@ void jogarSemestre(Personagem *p){
         printf("\n=== Dia %d ===\n", diaAtual);
 
         for (turno = 0; turno < TOTAL_TURNOS; turno++){
-            while (escolha < 0 || escolha > 3){
+
+            escolha = -1;
+
+            while (escolha < 0 || escolha > 4){
             printf("\nTurno %d\n", turno);
             printf("Escolha uma ação:\n");
             printf("[0] Ir à aula\n");
             printf("[1] Estudar\n");
             printf("[2] Dormir\n");
             printf("[3] Ir ao bar/festa\n");
-            printf("[4] Ver Status\n")
+            printf("[4] Ver Status\n");
             scanf("%d", (int*)&escolha);
 
             if (escolha < 0 || escolha > 4) {
@@ -467,7 +471,8 @@ void jogarSemestre(Personagem *p){
             }
 
             if (escolha == 4) {
-                mostrarStatus(&personagem);
+                mostrarStatus(p);
+                escolha = -1;
                 continue;
                 printf("Escolha uma ação novamente sem ser os status: ");
                 scanf("%d", (int*)&escolha);
@@ -503,41 +508,48 @@ void jogarSemestre(Personagem *p){
         }
     }
     //final do semestre
+    int aprovadas = 0;
+
+    printf("\n--- Fim do Semestre---\n");
+
+    for(int i = 0; i < p->NUM_MATERIAS; i++){
+        Materia *m = &p -> materias[i];
+        printf("\nMatérias: %s\n", m->nome);
+        printf("XP: %d | Frequência: %d%%\n", m->xp, m->frequencia/22*100);
+
+        bool passouXP = m->xp >= 60;
+        bool passouFrequencia = (m->frequencia*100/22) >= 75;
+
+        if (passouXP && passouFrequencia){
+            printf("Resultado: Aprovado\n");
+            aprovadas++;
+        }
+        else{
+            printf("Resultado: Reprovado\n");
+            if(!passouXP) printf("- Estudou pouco\n");
+            if(!passouFrequencia) printf("- faltou demais nas aulas\n");
+        }
+
+    }
+
+    printf("\nResumo: Você foi aprovado em %d de %d matérias.\n", aprovadas, p->NUM_MATERIAS);
+
+    if(aprovadas == p->NUM_MATERIAS){
+        printf("Parabéns! Você foi aprovado em tudo! 😎\n");
+    } else if(aprovadas == 0){
+        printf("Você... reprovou em tudo... você tem talento pra ser um fracassado!!!\n");
+    } else {
+        printf("Foi mais ou menos... mas já vi piores.\n");
+    }
 }
 
 
-
-
-
 int main() {
+    setlocale(LC_ALL,"");
+
     Personagem p = criarPersonagem();
 
-    printf("\n--- Dados do Personagem ---\n");
-    printf("Nome: %s\n", p.nome);
-    printf("Energia: %d\n", p.energia);
-    printf("Moral: %d\n", p.moral);
-    printf("Semestre: %d\n", p.semestre);
-    printf("Matérias inscritas (%d):\n", p.NUM_MATERIAS);
-
-    for (int i = 0; i < p.NUM_MATERIAS; i++) {
-        printf("  - %s\n", p.materias[i].nome);
-        printf("    XP: %d/%d\n", p.materias[i].xp, p.materias[i].xpNecessario);
-        //printf("    Frequencia: %d/%d\n", p.materias[i].frequencia, p.materias[i].min_frequencia);
-        printf("    Concluída: %s\n", p.materias[i].concluida ? "Sim" : "Não");
-
-        printf("    Horários: ");
-        for (int j = 0; j < TOTAL_TURNOS; j++) {
-            if (p.materias[i].horarios[j]) {
-                switch(j) {
-                    case 1: printf("Manhã I "); break;
-                    case 2: printf("Tarde I "); break;
-                    case 3: printf("Noite I "); break;
-                    default: printf("Turno %d ", j);
-                }
-            }
-        }
-        printf("\n");
-    }
+    jogarSemestre(&p);
 
     return 0;
 }
