@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <locale.h>
+#include <ctype.h>
 
 #define MAX_NOME 50
 #define TOTAL_TURNOS 4
@@ -15,6 +16,13 @@ typedef enum {
     NOITE,
     MADRUGADA
 } Turno;
+
+const char* nomesTurnos[]= {
+    "manha",
+    "tarde",
+    "noite",
+    "madrugada"
+};
 
 typedef enum{
     ACAO_IR_AULA,
@@ -50,6 +58,8 @@ typedef struct {
 
 
 //funções auxiliares
+void mostrarStatus(Personagem *p);
+
 bool materiaJaExiste(Personagem *jogador, const char *nomeMateria){
     for(int i = 0; i <jogador ->NUM_MATERIAS; i++){
         if(strcmp(jogador->materias[i].nome, nomeMateria) == 0){
@@ -59,8 +69,92 @@ bool materiaJaExiste(Personagem *jogador, const char *nomeMateria){
     return false;
 }
 
+void criarMateria(Personagem *p, const char *nomeMateria, int xpNecessario){
+    if(materiaJaExiste(p, nomeMateria)){
+            printf("Essa matéria já foi adicionada\n");
+            return;
+            }
 
+    Materia nova;
 
+   strcpy(nova.nome, nomeMateria);
+   nova.xp = 0;
+   nova.xpNecessario = xpNecessario;
+   nova.frequencia = 0;
+   nova.concluida = false;
+
+   for(int i = 0; i < TOTAL_TURNOS; i++){
+    nova.horarios[i] = false;
+   }
+
+   int escolha_turno = -1;
+
+   while (escolha_turno < 1 || escolha_turno > 3){
+       printf("Em qual horario gostaria de fazer %s?\n", nomeMateria);
+       printf("[1] Manhã\n");
+       printf("[2] Tarde\n");
+       printf("[3] Noite\n");
+       scanf("%d", &escolha_turno);
+
+       escolha_turno -= 1;
+
+        if (escolha_turno < 0 || escolha_turno > 2){
+        printf("Digito invalido, tente novamente \n");
+    }
+   }
+
+   nova.horarios[escolha_turno] = true;
+
+   p->materias[p->NUM_MATERIAS] = nova;
+   p->NUM_MATERIAS ++;
+
+}
+
+void pressionarTeclaeLimpar(){
+    int c;
+
+    while ((c = getchar()) != '\n' && c != EOF); // limpa o buffer
+    printf("Pressione Enter para continuar...");
+    getchar();
+
+    system("cls");
+}
+
+int escolherAcao(int turno, Personagem *p){
+    int escolha = -1;
+
+    while (escolha < 0 || escolha > 4 ){
+    printf("\nTurno %s\n", nomesTurnos[turno]);
+    printf("Escolha uma ação:\n");
+    printf("[0] Ir à aula\n");
+    printf("[1] Estudar\n");
+    printf("[2] Dormir\n");
+    printf("[3] Ir ao bar/festa\n");
+    printf("[4] Ver Status\n");
+    scanf("%d", (int*)&escolha);
+
+    if (escolha < 0 || escolha > 4){
+            printf("Ação inválida! Tente novamente\n");
+        }
+    }
+
+    if (escolha == 4) {
+        mostrarStatus(p);
+        escolha = -1;
+        while (escolha < 0 || escolha > 4){
+            printf("Escolha uma ação novamente sem ser os status: ");
+            scanf("%d", (int*)&escolha);
+        }
+
+    if(turno == 3 && escolha != ACAO_DESCANSAR){
+         p->energia -= 15;
+         printf("Você escolheu não descansar na madrugada... Pessima escolha\n");
+    }
+    }
+    return escolha;
+}
+
+//funções principais
 Personagem criarPersonagem(){
     Personagem jogador;
     int escolha_materia = 0, escolha_turno = 0, m = 0;
@@ -91,105 +185,19 @@ Personagem criarPersonagem(){
         }
 
     }
-    //chego
 
     switch(escolha_materia){
-    case 1:{
-        if(materiaJaExiste(&jogador, "Cálculo I")){
-            printf("Essa matéria já foi adicionada\n");
-        }else{
-            Materia calculo_I;
+    case 1:
+        criarMateria(&jogador, "Calculo I", 80);
+        break;
 
-           strcpy(calculo_I.nome, "Cálculo I");
-           calculo_I.xp = 0;
-           calculo_I.xpNecessario = 80;
-           calculo_I.frequencia = 0;
-           calculo_I.concluida = false;
+    case 2:
+        criarMateria(&jogador, "Linguagem C", 60);
+        break;
 
-           while (escolha_turno < 1 || escolha_turno > 3){
-               printf("Em qual horario gostaria de fazer Cálculo I?\n");
-               printf("[1] Manhã\n");
-               printf("[2] Tarde\n");
-               printf("[3] Noite\n");
-               scanf("%d", &escolha_turno);
-
-                if (escolha_turno < 1 || escolha_turno > 3){
-                printf("Digito invalido, tente novamente \n");
-            }
-           }
-
-           calculo_I.horarios[escolha_turno] = true;
-
-           jogador.materias[m] = calculo_I;
-           m += 1;
-           jogador.NUM_MATERIAS += 1;
-        }
-       break;}
-
-    case 2:{
-        if(materiaJaExiste(&jogador, "Linguagem C")){
-            printf("Essa matéria já foi adicionada\n");
-        }else{
-        Materia linguagem_c;
-
-       strcpy(linguagem_c.nome, "Linguagem C");
-       linguagem_c.xp = 0;
-       linguagem_c.xpNecessario = 60;
-       linguagem_c.frequencia = 0;
-       linguagem_c.concluida = false;
-
-       while (escolha_turno < 1 || escolha_turno > 3){
-           printf("Em qual horario gostaria de fazer linguagem_c?\n");
-           printf("[1] Manhã\n");
-           printf("[2] Tarde\n");
-           printf("[3] Noite\n");
-           scanf("%d", &escolha_turno);
-
-            if (escolha_turno < 1 || escolha_turno > 3){
-            printf("Digito invalido, tente novamente \n");
-        }
-       }
-
-       linguagem_c.horarios[escolha_turno] = true;
-
-       jogador.materias[m] = linguagem_c;
-       m += 1;
-       jogador.NUM_MATERIAS += 1;
-        }
-       break;}
-
-    case 3:{
-        if(materiaJaExiste(&jogador, "Física I")){
-            printf("Essa matéria já foi adicionada\n");
-        }else{
-        Materia fisica_I;
-
-       strcpy(fisica_I.nome, "Física I");
-       fisica_I.xp = 0;
-       fisica_I.xpNecessario = 100;
-       fisica_I.frequencia = 0;
-       fisica_I.concluida = false;
-
-       while (escolha_turno < 1 || escolha_turno > 3){
-           printf("Em qual horario gostaria de fazer Física I?\n");
-           printf("[1] Manhã\n");
-           printf("[2] Tarde\n");
-           printf("[3] Noite\n");
-           scanf("%d", &escolha_turno);
-
-            if (escolha_turno < 1 || escolha_turno > 3){
-            printf("Digito invalido, tente novamente \n");
-        }
-       }
-
-       fisica_I.horarios[escolha_turno] = true;
-
-       jogador.materias[m] = fisica_I;
-       m += 1;
-       jogador.NUM_MATERIAS += 1;
-        }
-       break;}
-
+    case 3:
+        criarMateria(&jogador, "Física I", 80);
+        break;
     }
 
 
@@ -202,20 +210,21 @@ Personagem criarPersonagem(){
 
     }
 
-
     return jogador;
 }
 
 
 //ações
 void irParaAula(Personagem *p, int turno){
-    printf("Você decidiu ir a aula\n");
+    printf("\x1b[34mVocê decidiu ir a aula\x1b[0m\n");
 
     bool teveAula = false;
+    int chanceSemPresenca = rand()%100;
 
     for(int i = 0; i < p->NUM_MATERIAS; i++){
-        if(p->materias[i].horarios[turno]){
-            Materia *m = &p->materias[i];
+        Materia *m = &p->materias[i];
+
+        if(m->horarios[turno]){
             teveAula = true;
             printf("Voce foi para a aula de %s\n", m->nome);
 
@@ -238,7 +247,13 @@ void irParaAula(Personagem *p, int turno){
             }
 
             m->xp += xpGanho;
-            m->frequencia += 1;
+
+            //EVENTO:aula sem presença
+            if(chanceSemPresenca < 5){
+                printf("Voce foi a aula, mas esqueceu de assinar a presença");
+            }else{
+                m->frequencia += 1;
+            }
 
             printf("Você ganhou %d de XP em %s.\n", xpGanho, m->nome);
         }
@@ -250,9 +265,8 @@ void irParaAula(Personagem *p, int turno){
     }
 }
 
-
 void estudar(Personagem *p){
-    printf("Voce decidiu estudar\n");
+    printf("\x1b[34mVoce decidiu estudar\x1b[0m\n");
 
     // sem materias
     if(p->NUM_MATERIAS == 0){
@@ -263,6 +277,7 @@ void estudar(Personagem *p){
     // escolha da materia
     int materiaIndex = -1;
     char entrada[10];
+    bool entradaValida = true;
 
     printf("\nEscolha uma matéria para estudar:\n");
 
@@ -273,16 +288,37 @@ void estudar(Personagem *p){
     printf("[a] Aleatório\n");
 
     printf("Sua escolha: ");
-    scanf(" %s", entrada);
+    scanf("%s", entrada);
 
 
-    if(strcmp(entrada, "a") == 0 || strcmp(entrada, "A") == 0 || materiaIndex < 0 || materiaIndex >= p->NUM_MATERIAS){
-        materiaIndex = rand() % p->NUM_MATERIAS;
-
-        if(materiaIndex < 0 || materiaIndex >= p->NUM_MATERIAS){
-            printf("Voce digitou errado, então como punição a materia sera escolhida aleatoriamente\n");
+    if (strcmp(entrada, "a") == 0 || strcmp(entrada, "A") == 0) {
+    materiaIndex = rand() % p->NUM_MATERIAS;
+    printf("Matéria aleatória escolhida!\n");
+    } else {
+    // Tenta verificar se é um número real
+    entradaValida = true;
+    for (int i = 0; entrada[i] != '\0'; i++) {
+        if (!isdigit(entrada[i])) {
+            entradaValida = false;
+            break;
         }
     }
+
+    if (entradaValida) {
+        materiaIndex = atoi(entrada);
+        if (materiaIndex < 0 || materiaIndex >= p->NUM_MATERIAS) {
+            entradaValida = false;  // fora do intervalo
+        }
+    } else {
+        materiaIndex = -1; // resetar só por segurança
+    }
+
+    if (!entradaValida) {
+        printf("Você digitou errado, então como punição a matéria será escolhida aleatoriamente... Tsc, preste mais atenção da próxima vez!\n");
+        materiaIndex = rand() % p->NUM_MATERIAS;
+    }
+    }
+
 
 
     Materia *m = &p ->materias[materiaIndex];
@@ -330,9 +366,8 @@ void estudar(Personagem *p){
     printf("Você ganhou %d de XP em %s.\n", xpBase, m->nome);
 }
 
-
 void descansar(Personagem *p){
-    printf("Você decidiu descansar\n");
+    printf("\x1b[34mVocê decidiu dormir\x1b[0m\n");
 
     //EVENTO: sem sono
     int chanceSemSono = rand() % 100;
@@ -370,7 +405,7 @@ void descansar(Personagem *p){
 }
 
 void socializar(Personagem *p){
-    printf("Você escolheu socializar\n");
+    printf("\x1b[34mVocê escolheu socializar\x1b[0m\n");
 
     int chance = rand() % 100;
 
@@ -412,15 +447,16 @@ void socializar(Personagem *p){
     }
     }else{
         printf("Você estava cansado demais para sair, mas fez mesmo assim\n");
-        printf("Não foi tão compensador como você pensava");
+        printf("Não foi tão compensador como você pensava\n");
         p->energia-= 5;
         p->moral += 2;
     }
 }
 
+
 //função de status
 void mostrarStatus(Personagem *p){
-    printf("=== STATUS DO(A) %S ===\n", p->nome);
+    printf("\n\x1b[33m=== STATUS DO(A) %s === \x1b[0m\n", p->nome);
     printf("%dº Semestre\n", p->semestre);
     printf("Energia: %d\n", p->energia);
     printf("Moral: %d\n", p->moral);
@@ -428,11 +464,12 @@ void mostrarStatus(Personagem *p){
     printf("\nDesempenho nas matérias:\n");
     for (int i = 0; i < p->NUM_MATERIAS; i++) {
         Materia *m = &p->materias[i];
-        printf("%s -> XP: %d | Frequência: %d%%\n", m->nome, m->xp, (m->frequencia/22)*100);
+        printf("%s -> XP: %d | Frequência: %d%%\n", m->nome, m->xp, m->frequencia*100/22);
     }
-    printf("=======================\n");
+    printf("\x1b[33m=======================\n\x1b[0m");
 
 }
+
 
 // função principal do dia a dia
 void jogarSemestre(Personagem *p){
@@ -444,49 +481,20 @@ void jogarSemestre(Personagem *p){
 
     //durante o semestre
     for(diaAtual; diaAtual <= diaMax; diaAtual++){
-        printf("\n=== Dia %d ===\n", diaAtual);
 
         for (turno = 0; turno < TOTAL_TURNOS; turno++){
+            printf("\n=== Dia %d ===\n", diaAtual);
 
-            escolha = -1;
-
-            while (escolha < 0 || escolha > 4){
-            printf("\nTurno %d\n", turno);
-            printf("Escolha uma ação:\n");
-            printf("[0] Ir à aula\n");
-            printf("[1] Estudar\n");
-            printf("[2] Dormir\n");
-            printf("[3] Ir ao bar/festa\n");
-            printf("[4] Ver Status\n");
-            scanf("%d", (int*)&escolha);
-
-            if (escolha < 0 || escolha > 4) {
-                    printf("Ação inválida! Tente novamente");
-                }
-            }
-
-            if(turno == 3 && escolha != ACAO_DESCANSAR){
-                 p->energia -= 5;
-                 printf("Você escolheu não descansar na madrugada... Pessima escolha");
-            }
-
-            if (escolha == 4) {
-                mostrarStatus(p);
-                escolha = -1;
-                continue;
-                printf("Escolha uma ação novamente sem ser os status: ");
-                scanf("%d", (int*)&escolha);
-            }
-
+            escolha = escolherAcao(turno, p);
 
             switch (escolha) {
                 case ACAO_IR_AULA:
-                    if (diaAtual % 6 == 0 || diaAtual % 7 == 0){
-                        if(diaAtual % 6 == 0){
-                            printf("Hoje é sabado, não tem aula");
+                    if ((diaAtual + 1) % 7 == 0 || diaAtual % 7 == 0){
+                        if((diaAtual + 1) % 7 == 0){
+                            printf("Hoje é sabado, não tem aula\n");
                             break;
                         }else{
-                        printf("Hoje é domingo, não tem aula");
+                        printf("Hoje é domingo, não tem aula\n");
                         break;
                         }
                     }
@@ -504,18 +512,22 @@ void jogarSemestre(Personagem *p){
                 case ACAO_SOCIALIZAR:
                     socializar(p);
                     break;
+                case 7:
+                    continue;
+                    break;
             }
+        pressionarTeclaeLimpar();
         }
     }
     //final do semestre
     int aprovadas = 0;
 
-    printf("\n--- Fim do Semestre---\n");
+    printf("\\x1b[31mn--- Fim do Semestre---\\x1b[0mn");
 
     for(int i = 0; i < p->NUM_MATERIAS; i++){
         Materia *m = &p -> materias[i];
         printf("\nMatérias: %s\n", m->nome);
-        printf("XP: %d | Frequência: %d%%\n", m->xp, m->frequencia/22*100);
+        printf("XP: %d | Frequência: %d%%\n", m->xp, m->frequencia*100/22);
 
         bool passouXP = m->xp >= 60;
         bool passouFrequencia = (m->frequencia*100/22) >= 75;
@@ -545,11 +557,18 @@ void jogarSemestre(Personagem *p){
 
 
 int main() {
-    setlocale(LC_ALL,"");
+    setlocale(LC_ALL, "Portuguese");
+
+    //Titulo
+    printf("=== RPG DE ESTUDANTE ===\n");
 
     Personagem p = criarPersonagem();
 
+    system("cls");
+
     jogarSemestre(&p);
+
+    pressionarTeclaeLimpar();
 
     return 0;
 }
