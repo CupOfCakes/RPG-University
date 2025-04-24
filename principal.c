@@ -8,6 +8,7 @@
 #define MAX_NOME 50
 #define TOTAL_TURNOS 4
 #define MAX_MATERIAS 3
+#define NUM_ROMANCES 3
 
 // structs
 typedef enum {
@@ -31,7 +32,7 @@ typedef enum{
     ACAO_SOCIALIZAR,
 } ACAO;
 
-typedef struct {
+typedef struct{
     char nome[MAX_NOME];
     int xp;
     int xpNecessario;
@@ -40,12 +41,34 @@ typedef struct {
     bool concluida;
 } Materia;
 
+typedef enum{
+    BEBADO,
+    MACHUCADO,
+    DOENTE,
+    BANIDO_DO_BAR,
+    NUM_STATUS
+} Status;
+
+const char *nomeStatus[NUM_STATUS] = {
+    "Bêbado",
+    "Machucado",
+    "Doente",
+    "Banido do bar"
+};
+
 typedef struct{
     char nome[MAX_NOME];
     char descricao[100];
-    bool especial;
-    bool concluido;
-} Evento;
+    int afinidade;
+    bool namorando;
+    bool desbloqueado;
+}NPC;
+
+NPC romances[NUM_ROMANCES] = {
+    {"Alex", "Um estudante misterioso que adora poesia.", 0, false, false},
+    {"Júlia", "Uma atleta que frequenta o bar aos fins de semana.", 0, false, false},
+    {"Rafa", "Gamer e tímido(a), só socializa depois de umas cervejas.", 0, false, false}
+};
 
 typedef struct {
     char nome[MAX_NOME];
@@ -54,6 +77,9 @@ typedef struct {
     int semestre;
     Materia materias[MAX_MATERIAS];
     int NUM_MATERIAS;
+    bool situacao[NUM_STATUS];
+    int dias_banido;
+    int dias_doente;
 } Personagem;
 
 
@@ -113,9 +139,9 @@ void criarMateria(Personagem *p, const char *nomeMateria, int xpNecessario){
 void pressionarTeclaeLimpar(){
     int c;
 
-    while ((c = getchar()) != '\n' && c != EOF); // limpa o buffer
     printf("Pressione Enter para continuar...");
     getchar();
+    while ((c = getchar()) != '\n' && c != EOF); // limpa o buffer
 
     system("cls");
 }
@@ -154,7 +180,7 @@ int escolherAcao(int turno, Personagem *p){
     return escolha;
 }
 
-//funções principais
+//funções de criar personagem
 Personagem criarPersonagem(){
     Personagem jogador;
     int escolha_materia = 0, escolha_turno = 0, m = 0;
@@ -169,6 +195,7 @@ Personagem criarPersonagem(){
     jogador.moral = 0;
     jogador.semestre = 1;
     jogador.NUM_MATERIAS = 0;
+    jogador.dias_banido = 0;
 
     while(escolha_continue == 's' || escolha_continue == 'S'){
 
@@ -216,7 +243,7 @@ Personagem criarPersonagem(){
 
 //ações
 void irParaAula(Personagem *p, int turno){
-    printf("\x1b[34mVocê decidiu ir a aula\x1b[0m\n");
+    printf("\x1b[36mVocê decidiu ir a aula\x1b[0m\n");
 
     bool teveAula = false;
     int chanceSemPresenca = rand()%100;
@@ -225,6 +252,32 @@ void irParaAula(Personagem *p, int turno){
         Materia *m = &p->materias[i];
 
         if(m->horarios[turno]){
+            if(p->situacao[BEBADO]){
+                int chanceProfBom = rand() % 3;
+
+                if(chanceProfBom == 0){
+                    printf("Você foi à aula bêbado, mas teve sorte: o professor estava de bom humor e não te expulsou.\n");
+                    printf("Mas você não entendeu nada da aula.\n");
+                    p->energia -= 12;
+                    m->frequencia += 1;
+                }else if(chanceProfBom == 1){
+                    printf("Você foi à aula bêbado e o professor te expulsou da sala na frente de todo mundo.\n");
+                    p->energia -= 12;
+                    p->moral -= 5;
+                }else{
+                    printf("Você tentou ir pra aula... mas acabou desmaiando na cama antes de sair de casa.\n");
+                }
+                return;
+            }
+
+            if(p->situacao[DOENTE]){
+                printf("Você estava doente e mal conseguiu prestar atenção...\n");
+                m->xp += 3; // valor reduzido
+                p->energia -= 12;
+                return;
+            }
+
+
             teveAula = true;
             printf("Voce foi para a aula de %s\n", m->nome);
 
@@ -266,13 +319,15 @@ void irParaAula(Personagem *p, int turno){
 }
 
 void estudar(Personagem *p){
-    printf("\x1b[34mVoce decidiu estudar\x1b[0m\n");
+    printf("\x1b[36mVoce decidiu estudar\x1b[0m\n");
 
     // sem materias
     if(p->NUM_MATERIAS == 0){
         printf("Você não tem materias cadastradas\n");
         return;
     }
+
+
 
     // escolha da materia
     int materiaIndex = -1;
@@ -325,6 +380,13 @@ void estudar(Personagem *p){
 
     printf("Você decidiu estudar %s.\n", m -> nome);
 
+    if(p->situacao[BEBADO] || p->situacao[MACHUCADO] || p->situacao[DOENTE]){
+        printf("Você não esta em condições de estudar, mas tentou");
+        p->energia -=5;
+        m->xp += 2 + rand()%8;
+        return;
+    }
+
 
     //EVENTO: dormir durante o estudo
     int chanceDormir = rand()%100;
@@ -367,7 +429,7 @@ void estudar(Personagem *p){
 }
 
 void descansar(Personagem *p){
-    printf("\x1b[34mVocê decidiu dormir\x1b[0m\n");
+    printf("\x1b[36mVocê decidiu dormir\x1b[0m\n");
 
     //EVENTO: sem sono
     int chanceSemSono = rand() % 100;
@@ -405,68 +467,257 @@ void descansar(Personagem *p){
 }
 
 void socializar(Personagem *p){
-    printf("\x1b[34mVocê escolheu socializar\x1b[0m\n");
+    printf("\x1b[36mVocê escolheu ir ao bar\x1b[0m\n");
 
-    int chance = rand() % 100;
-
-    if(p->energia > 30){
-    if(chance <= 10){
-        printf("Você perdeu a noção e virou o bêbado inconveniente da festa...\n");
-        printf("Precisaram te levar pra casa...\n");
-
-        p->energia -= 5;
-        p->moral -=10;
+    if(p->situacao[BANIDO_DO_BAR]){
+        printf("Você ainda está banido do bar por %d dia(s).\n", p->dias_banido);
+        return;
     }
-    else if(chance >= 11 && chance <= 40){
-        printf("Você até saiu de casa, mas passou a maior parte do tempo no canto, mexendo no celular...\n");
-        printf("Ao menos tentou. Isso já é uma vitória.\n");
 
-        p->energia -= 5;
-        p->moral += 5;
-    }
-    else if(chance >= 41 && chance <= 70){
-        printf("Você riu, falou besteira e até esqueceu dos problemas por um tempo.\n");
-        printf("Foi um momento leve e divertido.\n");
+    int escolha = -1, acoes = 0, bebidas = 0;
+    bool sair = false;
 
-        p->energia -= 10;
-        p->moral += 10;
-    }
-    else if(chance >= 71 && chance <= 90){
-        printf("Você conquistou geral com seu carisma e deixou todo mundo à vontade.\n");
-        printf("Você não foi só mais um na multidão. Impressionante.\n");
+    while (!sair){
 
-        p->energia -= 15;
-        p->moral += 20;
-    }
-    else{
-        printf("VOCÊ. FOI. A. LUZ. DAQUELA. FESTA!\n");
-        printf("Todos vão lembrar desse dia como 'aquele momento em que tudo foi perfeito'.\n");
+        if(acoes < 5){
+            pressionarTeclaeLimpar();
+        }
 
-        p->energia -= 20;
-        p->moral += 30;
-    }
-    }else{
-        printf("Você estava cansado demais para sair, mas fez mesmo assim\n");
-        printf("Não foi tão compensador como você pensava\n");
-        p->energia-= 5;
-        p->moral += 2;
-    }
+        printf("\nVocê está no bar! O que deseja fazer?\n");
+        printf("[0] Conversar com colegas\n");
+        printf("[1] Jogar sinuca\n");
+        printf("[2] Beber cerveja\n");
+        printf("[3] Ir embora\n");
+        printf("Escolha: ");
+        scanf("%d", &escolha);
+
+        int chance = rand() % 100, chanceRaro = rand() % 100;
+
+        if(chanceRaro < 9){
+            int evento = rand() % 3;
+            int finalEvento= rand()% 2;
+
+            printf("\n\x1b[35mEVENTOS ESPECIAIS\x1b[0m\n");
+
+            switch(evento){
+            case 0:
+                printf("\nVocê esbarrou em alguém que não gostou nada disso... Uma briga começou!\n");
+                p->energia -= 20;
+                if(finalEvento == 1){
+                    printf("Magicamente você conseguiu vencer");
+                    p->moral += 25;
+                }else{
+                    printf("Foi lindo");
+                    printf("Você tomou uma surra fenomenal");
+                    p->moral -= 40;
+                    p->situacao[MACHUCADO] = true;
+                    sair = true;
+                }
+                break;
+            case 1:
+                printf("\nVocê trocou olhares com uma pessoa, tomou uma dose de coragem e foi ate ela(e)\n");
+                p->energia -= 5;
+                if(finalEvento == 1){
+                    printf("Você foi até a pessoa com confiança e...\n");
+                    printf("bingo! Conversa vai, conversa vem, vocês acabaram trocando contatos. Nada mal!\n");
+
+                    //desbloquear personagem
+                    int bloqueados[NUM_ROMANCES];
+                    int num_bloqueados = 0;
+
+                    // Preenche a lista com os que ainda estão bloqueados
+                    for (int i = 0; i < NUM_ROMANCES; i++) {
+                        if (!romances[i].desbloqueado) {
+                            bloqueados[num_bloqueados++] = i;
+                        }
+                    }
+
+                    // se não houver mais personagens bloqueados, nada acontece
+                    if (num_bloqueados == 0) {
+                        printf("Você tomou um fora, pelo menos tentou...\n");
+                    } else {
+                        // Escolhe aleatoriamente um entre os bloqueados
+                        int escolhido = bloqueados[rand() % num_bloqueados];
+
+                        romances[escolhido].desbloqueado = true;
+                        printf("Você conheceu %s! %s\n", romances[escolhido].nome, romances[escolhido].descricao);
+                    }
+
+                    p->moral += 15;
+                }else{
+                    printf("Você flertou com a pessoa errada... \n");
+                    printf("era o par do segurança. Antes que percebesse, estava sendo educadamente escoltado pra fora.\n");
+                    printf("Pelas suas ações você foi expulso do bar por 3 dias\n");
+                    p->moral -= 15;
+                    sair = true;
+                    p->situacao[BANIDO_DO_BAR] = true;
+                    p->dias_banido = 3;
+                }
+                break;
+            case 2:
+                printf("\nUma competição de karaokê começa do nada! Alguém te desafia no meio do bar.\n");
+                p->energia -= 10;
+                if(finalEvento == 1){
+                    printf("ocê soltou a voz como um astro do pop! Todos aplaudiram.\n");
+                    printf(" Você ganhou uma rodada grátis de bebida!\n");
+                    p->moral += 15;
+                    bebidas++;
+                }else{
+                    printf("Você desafinou tanto que o barman pediu para que você descesse\n");
+                    p->moral -= 25;
+                }
+                break;
+            case 3:{
+                int prof = rand()% p->NUM_MATERIAS;
+                printf("\nEntre a multidão barulhenta, você vê uma figura familiar... é seu professor de %s!\n", p->materias[prof].nome);
+                p->energia -= 5;
+                if(finalEvento == 1){
+                    printf("Vocês acabam conversando e ele é mais legal do que você esperava.\n");
+                    printf("Você ganhou um poquinho de xp na materia dele!\n");
+                    p->materias[prof].xp += 15;
+                }else{
+                    printf("Ele finge que não te viu... Mas você sabe que ele te viu\n");
+                    p->materias[prof].xp -= 10;
+                }
+                break;
+            }
+            }
+            acoes++;
+            pressionarTeclaeLimpar();
+            continue;
+        }
+
+
+
+        switch(escolha){
+            case 0:
+                 if(chance >= 80){
+                    printf("Você encontrou seus melhores amigos! A conversa fluiu e te reanimou.\n");
+                    p->energia += 10;
+                 } else if(chance >= 50){
+                    printf("Você encontrou conhecidos e bateu um papo... nada demais.\n");
+                    p->energia += 2;
+                 } else {
+                    printf("Você tentou conversar, mas acabou se sentindo deslocado.\n");
+                    p->energia -= 5;
+                 }
+                 acoes++;
+                 break;
+            case 1:
+                if(chance >= 85){
+                    printf("Você venceu a partida! Sua moral subiu e você se sente confiante.\n");
+                    p->moral += 1;
+                    p->energia += 5;
+                } else if(chance >= 40){
+                    printf("Foi uma boa partida de sinuca, mesmo sem ganhar. Você relaxou um pouco.\n");
+                    p->energia += 2;
+                } else {
+                    printf("Você perdeu feio e ainda rasgou o feltro da mesa... que vergonha!\n");
+                    p->moral -= 1;
+                    p->energia -= 5;
+                }
+                acoes++;
+                break;
+            case 2:
+                bebidas++;
+                if(bebidas == 1){
+                    printf("Uma bebidinha não mata ninguem\n");
+                    p->energia -= 2;
+                } else if(bebidas == 2){
+                    printf("Uma bebidinha não mata ninguem... mas foi mais de uma\n");
+                    p->energia -= 4;
+                } else if (bebidas == 3){
+                    printf("Serio que você quis beber tanto?\n");
+                    printf("PARABENS!!! VOCE BEBEU DEMAIS\n");
+                    p->energia -= 10;
+                    p->moral -= 15;
+                    p->situacao[BEBADO] = true;
+                } else{
+                    printf("Eu não tenho mais o que te falar");
+                }
+                acoes++;
+                break;
+            case 3:
+                printf("Você decide ir embora do bar.\n");
+                sair = true;
+                break;
+            default:
+                printf("Opção inválida, tente novamente\n");
+                break;
+        }
+
+
+        if(acoes >= 5 && !sair && !p->situacao[BEBADO]){
+            printf("\nVocê ficou tempo demais no bar e foi cordialmente convidado a sair\n");
+            sair = true;
+        }
+
+        if(p->situacao[BEBADO] && acoes >= 5){
+            sair = true;
+            int evento = rand() % 4;
+
+            switch(evento) {
+                case 0:
+                    printf("Você desmaiou no bar. Acordou com o dono do bar te abanando com um cardápio.\n");
+                    p->energia = 0;
+                    p->moral -= 5;
+                    break;
+                case 1:
+                    printf("Você acordou em um banco de praça com uma pizza meio comida do seu lado. Onde você arranjou isso?!\n");
+                    p->energia = 5;
+                    p->moral -= 10;
+                    break;
+                case 2:
+                    printf("Você acordou em casa... como você chegou aqui?.\n");
+                    p->moral -= 3;
+                    break;
+                case 3:
+                    printf("Você acordou em um quarto estranho numa cama com outra pessoa, por sorte conseguiu sair antes dela acordar. Quem é essa pessoa?!\n");
+                    p->moral -= 2;
+                    break;
+            }
+        }
+
+        }
+
 }
 
 
 //função de status
 void mostrarStatus(Personagem *p){
-    printf("\n\x1b[33m=== STATUS DO(A) %s === \x1b[0m\n", p->nome);
+    bool temStatus = false;
+
+    printf("\n\x1b[36m=== STATUS DO(A) %s === \x1b[0m\n", p->nome);
+
+    //status do personagem
     printf("%dº Semestre\n", p->semestre);
     printf("Energia: %d\n", p->energia);
     printf("Moral: %d\n", p->moral);
 
+    //situação ativas
+    printf("\nSituação atual:\n");
+    for(int i = 0; i< NUM_STATUS; i++){
+        if (p->situacao[i]) {
+            if (i == BANIDO_DO_BAR) {
+                printf("- %s (dias restantes: %d)\n", nomeStatus[i], p->dias_banido);
+            } else {
+                printf("- %s\n", nomeStatus[i]);
+            }
+            temStatus = true;
+        }
+    }
+
+    if (!temStatus) {
+        printf("Nenhum status ativo no momento. Tá se achando agora, né?\n");
+    }
+
+    //status da materia
     printf("\nDesempenho nas matérias:\n");
     for (int i = 0; i < p->NUM_MATERIAS; i++) {
         Materia *m = &p->materias[i];
         printf("%s -> XP: %d | Frequência: %d%%\n", m->nome, m->xp, m->frequencia*100/22);
     }
-    printf("\x1b[33m=======================\n\x1b[0m");
+    printf("\x1b[36m=======================\n\x1b[0m");
 
 }
 
@@ -479,13 +730,60 @@ void jogarSemestre(Personagem *p){
     ACAO escolha = -1;
     char escolhaStatus;
 
+
     //durante o semestre
     for(diaAtual; diaAtual <= diaMax; diaAtual++){
 
+        //ban bar
+        if(p->situacao[BANIDO_DO_BAR]){
+            p->dias_banido--;
+            if(p->dias_banido <= 0){
+                p->situacao[BANIDO_DO_BAR] = false;
+            }
+        }
+
+        //doença
+        int chanceDoente = rand() % 100;
+
+        if(!p->situacao[DOENTE] && chanceDoente <= 7){
+            printf("Você acordou se sentindo mal, parece que você pegou um resfriado");
+            p->situacao[DOENTE] = true;
+            p->dias_doente = 2;
+        }else{
+            p->dias_doente--;
+            if(p->dias_doente <= 0){
+                printf("Você acordou se sentindo melhor, parece que seu resfriado se foi");
+                p->situacao[DOENTE] = false;
+            }
+        }
+
+        //turnos do dia
         for (turno = 0; turno < TOTAL_TURNOS; turno++){
             printf("\n=== Dia %d ===\n", diaAtual);
 
+            //perde um turno se estiver bebado no dia anterior
+            if(turno == 0 && p->situacao[BEBADO]){
+                printf("Você acordou com uma forte ressaca e não conseguiu fazer nada pela manhã");
+                p->situacao[BEBADO] = false;
+                pressionarTeclaeLimpar;
+                continue;
+            }
+
+            //recupera machucados
+            if(turno == 0 && p->situacao[MACHUCADO]){
+                printf("Você se sente melhor dos machucados");
+                p->situacao[MACHUCADO] = false;
+                pressionarTeclaeLimpar;
+            }
+
             escolha = escolherAcao(turno, p);
+
+            if (p->situacao[DOENTE] && rand() % 100 < 20) {
+                printf("Você tentou sair, mas passou mal no caminho e voltou pra casa...\n");
+                pressionarTeclaeLimpar();
+                continue;
+            }
+
 
             switch (escolha) {
                 case ACAO_IR_AULA:
@@ -516,8 +814,16 @@ void jogarSemestre(Personagem *p){
                     continue;
                     break;
             }
+        //penalidade machucado
+        if(p->situacao[MACHUCADO] && escolha != ACAO_DESCANSAR){
+            printf("Voce estava machucado então se esforçou mais na ação");
+            p->energia -=5;
+        }
+
         pressionarTeclaeLimpar();
         }
+        // final do dia
+
     }
     //final do semestre
     int aprovadas = 0;
