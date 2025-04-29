@@ -9,6 +9,7 @@
 #define TOTAL_TURNOS 4
 #define MAX_MATERIAS 3
 #define NUM_ROMANCES 3
+#define AFINIDADE_BAIXA -20
 
 // structs
 typedef enum {
@@ -30,6 +31,9 @@ typedef enum{
     ACAO_ESTUDAR,
     ACAO_DESCANSAR,
     ACAO_SOCIALIZAR,
+    ACAO_ENCONTRO,
+    ACAO_STATUS,
+    NUM_ACAO,
 } ACAO;
 
 typedef struct{
@@ -56,18 +60,39 @@ const char *nomeStatus[NUM_STATUS] = {
     "Banido do bar"
 };
 
+typedef enum {
+    CIUMENTA,
+    RICA,
+    CHORONA,
+    FOFINHA,
+    AVENTUREIRA,
+    INTELIGENTE,
+} Caracteristica;
+
+typedef enum{
+    CONTATO,
+    NAMORANDO,
+    EX,
+} npc_relacionamento;
+
 typedef struct{
     char nome[MAX_NOME];
     char descricao[100];
     int afinidade;
-    bool namorando;
     bool desbloqueado;
+    npc_relacionamento relacionamento;
+    Caracteristica personalidade;
 }NPC;
 
-NPC romances[NUM_ROMANCES] = {
-    {"Alex", "Um estudante misterioso que adora poesia.", 0, false, false},
-    {"Júlia", "Uma atleta que frequenta o bar aos fins de semana.", 0, false, false},
-    {"Rafa", "Gamer e tímido(a), só socializa depois de umas cervejas.", 0, false, false}
+const char *locaisEncontro[] = {
+    "Cafeteria",
+    "Parque",
+    "Cinema",
+    "Restaurante",
+    "Shopping",
+    "Show de musica ao vivo",
+    "Bar",
+    "Museu"
 };
 
 typedef struct {
@@ -82,6 +107,12 @@ typedef struct {
     int dias_doente;
 } Personagem;
 
+
+NPC romances[NUM_ROMANCES] = {
+    {"Alex", "Um estudante misterioso que adora poesia.", 0, false, CONTATO, FOFINHA},
+    {"Júlia", "Uma atleta que frequenta o bar aos fins de semana.", 0, false, CONTATO, AVENTUREIRA},
+    {"Rafa", "Gamer e tímido(a), só socializa depois de umas cervejas.", 0, false, CONTATO, INTELIGENTE}
+};
 
 //funções auxiliares
 void mostrarStatus(Personagem *p);
@@ -149,7 +180,17 @@ void pressionarTeclaeLimpar(){
 int escolherAcao(int turno, Personagem *p){
     int escolha = -1;
 
-    while (escolha < 0 || escolha > 4 ){
+    bool tem_opcao_encontro = false;
+
+    for (int i = 0; i < NUM_ROMANCES; i++) {
+    if (romances[i].desbloqueado) {
+        tem_opcao_encontro = true;
+        break;
+    }
+    }
+
+
+    while (escolha < 0 || escolha > NUM_ACAO ){
     printf("\nTurno %s\n", nomesTurnos[turno]);
     printf("Escolha uma ação:\n");
     printf("[0] Ir à aula\n");
@@ -157,19 +198,29 @@ int escolherAcao(int turno, Personagem *p){
     printf("[2] Dormir\n");
     printf("[3] Ir ao bar/festa\n");
     printf("[4] Ver Status\n");
+    if(tem_opcao_encontro) printf("[5] Sair com alguém\n");
     scanf("%d", (int*)&escolha);
 
-    if (escolha < 0 || escolha > 4){
+    if (escolha < 0 || escolha > NUM_ACAO){
             printf("Ação inválida! Tente novamente\n");
         }
+    if(!tem_opcao_encontro && escolha == ACAO_ENCONTRO){
+        printf("Ação inválida! Tente novamente\n");
+        continue;
+    }
     }
 
-    if (escolha == 4) {
+
+    if (escolha == ACAO_STATUS) {
         mostrarStatus(p);
         escolha = -1;
-        while (escolha < 0 || escolha > 4){
+        while ((escolha < 0 || escolha > NUM_ACAO) && escolha == ACAO_STATUS){
             printf("Escolha uma ação novamente sem ser os status: ");
             scanf("%d", (int*)&escolha);
+            if(!tem_opcao_encontro && escolha == ACAO_ENCONTRO){
+                printf("Ação inválida! Tente novamente\n");
+                continue;
+            }
         }
 
     if(turno == 3 && escolha != ACAO_DESCANSAR){
@@ -682,6 +733,166 @@ void socializar(Personagem *p){
 
 }
 
+void encontro(Personagem *p, NPC romances[]){
+    //tabela de conhecidos e escolha de parceiro
+    int conhecidos = 0, escolhaParceiro = -1;
+
+
+    while (escolhaParceiro < 0 || escolhaParceiro >= NUM_ROMANCES || !romances[escolhaParceiro].desbloqueado){
+    printf("--- Pessoas Conhecidas ---");
+
+    for(int i = 0; i < NUM_ROMANCES; i++){
+        if(romances[i].desbloqueado){
+            printf("[%d] %s\n", i, romances[i].nome);
+            conhecidos++;
+        }
+    }
+
+    printf("Escolha com quem quer sair: ");
+    scanf("%d", &escolhaParceiro);
+    }
+
+    printf("\nVocê decidiu sair com a/o %s!\n", romances[escolhaParceiro].nome);
+
+    //escolha do local
+    int escolhaLocal=-1;
+    int numLocais = sizeof(locaisEncontro)/ sizeof(locaisEncontro[0]);
+
+    while(escolhaLocal < 0 || escolhaLocal >=numLocais){
+        printf("\nEscolha o local para o encontro:\n");
+        for (int i = 0; i < numLocais; i++) {
+            printf("[%d] %s\n", i, locaisEncontro[i]);
+        }
+
+        if(escolhaLocal < 0 || escolhaLocal >=numLocais){
+            printf("Opção invalida, tente novamente!\n");
+        }
+
+    }
+
+    printf("\nVocê marcou o encontro no(a) %s!\n", locaisEncontro[escolhaLocal]);
+
+    pressionarTeclaeLimpar();
+
+    //o encontro
+    switch(romances[escolhaParceiro].personalidade){
+        case FOFINHA:
+            if(strcmp(locaisEncontro[escolhaLocal], "Cafeteria") == 0 || strcmp(locaisEncontro[escolhaLocal], "Parque") == 0){
+                printf("%s adorou o passeio no %s\n", romances[escolhaParceiro].nome, locaisEncontro[escolhaLocal]);
+                romances[escolhaParceiro].afinidade += 10;
+            }
+            else if(strcmp(locaisEncontro[escolhaLocal], "Shopping") == 0 || strcmp(locaisEncontro[escolhaLocal], "Restaurante") == 0){
+                printf("%s gostou o passei no %s\n", romances[escolhaParceiro].nome, locaisEncontro[escolhaLocal]);
+                romances[escolhaParceiro].afinidade += 5;
+            }
+            else{
+                printf("%s ficou meio sem graça com o local...\n", romances[escolhaParceiro].nome);
+                romances[escolhaParceiro].afinidade -= 10;
+            }
+            break;
+        case CIUMENTA:
+            printf("%s ficou muito feliz por você querer passar tempo com ela!\n", romances[escolhaParceiro].nome);
+            romances[escolhaParceiro].afinidade += 20;
+
+           if(strcmp(locaisEncontro[escolhaLocal], "Cinema") == 0){
+                printf("%s te perguntou se você acha uma certa atriz/ator bonita(o), mas foi um evento isolado\n", romances[escolhaParceiro].nome);
+            }
+            else if(strcmp(locaisEncontro[escolhaLocal], "Shopping") == 0 || strcmp(locaisEncontro[escolhaLocal], "Parque") == 0
+                    || strcmp(locaisEncontro[escolhaLocal], "Show de musica ao vivo") == 0 || strcmp(locaisEncontro[escolhaLocal], "Bar") == 0){
+                printf("%s sempre parece estar de olho em quem chega perto de você\n", romances[escolhaParceiro].nome);
+            }
+            break;
+        case RICA:
+            if(strcmp(locaisEncontro[escolhaLocal], "Shopping") == 0 || strcmp(locaisEncontro[escolhaLocal], "Restaurante") == 0){
+                printf("%s adorou o passeio no %s\n", romances[escolhaParceiro].nome, locaisEncontro[escolhaLocal]);
+                romances[escolhaParceiro].afinidade += 10;
+            }
+            else{
+                printf("%s ficou visivelmente descontente com o local com o local...\n", romances[escolhaParceiro].nome);
+                romances[escolhaParceiro].afinidade -= 10;
+            }
+            break;
+        case CHORONA:
+            if(strcmp(locaisEncontro[escolhaLocal], "Cafeteria") == 0 || strcmp(locaisEncontro[escolhaLocal], "Parque") == 0 || strcmp(locaisEncontro[escolhaLocal], "Cinema") == 0){
+                printf("%s adorou o passeio no %s, mas em um momento você viu os olhos dela(o) lacrimejarem e ela(e) disse que não foi nada\n", romances[escolhaParceiro].nome, locaisEncontro[escolhaLocal]);
+                romances[escolhaParceiro].afinidade += 10;
+            }
+            else if(strcmp(locaisEncontro[escolhaLocal], "Show de musica ao vivo") == 0 || strcmp(locaisEncontro[escolhaLocal], "Bar") == 0){
+                printf("%s ficou meio sem graça com o local...\n", romances[escolhaParceiro].nome);
+                romances[escolhaParceiro].afinidade -= 10;
+            }
+            else{
+                printf("%s gostou o passei no %s\n", romances[escolhaParceiro].nome, locaisEncontro[escolhaLocal]);
+                romances[escolhaParceiro].afinidade += 5;
+            }
+            break;
+        case AVENTUREIRA:
+            if(strcmp(locaisEncontro[escolhaLocal], "Parque") == 0 || strcmp(locaisEncontro[escolhaLocal], "Show de musica ao vivo") == 0 || strcmp(locaisEncontro[escolhaLocal], "Bar") == 0){
+                printf("%s adorou o passeio no %s, mas parecia mais envolvida com o local do que com o encontro\n", romances[escolhaParceiro].nome, locaisEncontro[escolhaLocal]);
+                romances[escolhaParceiro].afinidade += 10;
+            }
+            else if(strcmp(locaisEncontro[escolhaLocal], "Shopping") == 0 || strcmp(locaisEncontro[escolhaLocal], "Bar") == 0){
+                printf("%s gostou o passei no %s, mas parecia um pouco desanimada\n", romances[escolhaParceiro].nome, locaisEncontro[escolhaLocal]);
+                romances[escolhaParceiro].afinidade += 5;
+            }
+            else{
+                printf("%s parecia entediada\n", romances[escolhaParceiro].nome);
+                romances[escolhaParceiro].afinidade -= 10;
+            }
+            break;
+        case INTELIGENTE:
+            if(strcmp(locaisEncontro[escolhaLocal], "Cafeteria") == 0 || strcmp(locaisEncontro[escolhaLocal], "Restaurante") == 0 || strcmp(locaisEncontro[escolhaLocal], "Museu") == 0){
+                printf("%s adorou o passeio no %s e ficou a maior parte do tempo falando sobre livro e series\n", romances[escolhaParceiro].nome, locaisEncontro[escolhaLocal]);
+                romances[escolhaParceiro].afinidade += 10;
+            }
+            else if(strcmp(locaisEncontro[escolhaLocal], "Bar") == 0 || strcmp(locaisEncontro[escolhaLocal], "Show de musica ao vivo") == 0){
+                printf("%s ficou quieta até demais\n", romances[escolhaParceiro].nome);
+                romances[escolhaParceiro].afinidade -= 10;
+            }
+            else{
+                printf("%s gostou o passei no %s, mas parecia um pouco deslocada\n", romances[escolhaParceiro].nome, locaisEncontro[escolhaLocal]);
+                romances[escolhaParceiro].afinidade += 5;
+            }
+            break;
+    }
+
+        //caso de afinidade muito baixa
+        if(romances[escolhaParceiro].afinidade < AFINIDADE_BAIXA ){
+            switch(romances[escolhaParceiro].personalidade){
+                case FOFINHA:
+                    printf("%s confessou que não estava gostando de sair com você, mas decidiu te dar mais uma chance!\n", romances[escolhaParceiro].nome);
+                    romances[escolhaParceiro].afinidade = 0;
+                    romances[escolhaParceiro].relacionamento = CONTATO;
+                    break;
+
+                case RICA:
+                    printf("%s decidiu que você não vale o investimento... Nunca mais te respondeu.\n", romances[escolhaParceiro].nome);
+                    romances[escolhaParceiro].afinidade = 0;
+                    romances[escolhaParceiro].relacionamento = EX;
+                    break;
+
+                case CHORONA:
+                    printf("%s chorou por horas ao percebe que vocêis não dariam, mas aceitou continuar como amigo(a)...\n", romances[escolhaParceiro].nome);
+                    romances[escolhaParceiro].afinidade = 0;
+                    romances[escolhaParceiro].relacionamento = CONTATO;
+                    break;
+
+                case AVENTUREIRA:
+                    printf("%s só deu um tchau com um sorriso. Agora é ex, mas sem mágoas.\n", romances[escolhaParceiro].nome);
+                    romances[escolhaParceiro].relacionamento = EX;
+                    break;
+
+                case INTELIGENTE:
+                    printf("%s percebeu que você não era o melhor para ela e se afastou sem dar explicação.\n", romances[escolhaParceiro].nome);
+                    romances[escolhaParceiro].desbloqueado = false;
+                    romances[escolhaParceiro].afinidade = 0;
+                    romances[escolhaParceiro].relacionamento = EX;
+                    break;
+            }
+    }
+
+}
+
 
 //função de status
 void mostrarStatus(Personagem *p){
@@ -810,8 +1021,8 @@ void jogarSemestre(Personagem *p){
                 case ACAO_SOCIALIZAR:
                     socializar(p);
                     break;
-                case 7:
-                    continue;
+                case ACAO_ENCONTRO:
+                    //encontro(p);
                     break;
             }
         //penalidade machucado
@@ -853,7 +1064,7 @@ void jogarSemestre(Personagem *p){
     printf("\nResumo: Você foi aprovado em %d de %d matérias.\n", aprovadas, p->NUM_MATERIAS);
 
     if(aprovadas == p->NUM_MATERIAS){
-        printf("Parabéns! Você foi aprovado em tudo! 😎\n");
+        printf("Parabéns! Você foi aprovado em tudo!\n");
     } else if(aprovadas == 0){
         printf("Você... reprovou em tudo... você tem talento pra ser um fracassado!!!\n");
     } else {
